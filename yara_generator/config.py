@@ -13,7 +13,7 @@ TOP_STRINGS_COUNT = 20
 
 # Default condition for the YARA rule (e.g., "any of them", "all of them", "N of them")
 # If using "N of them", specify the number, e.g., "5 of them"
-DEFAULT_RULE_CONDITION = "all of them"
+DEFAULT_RULE_CONDITION = "any of them"
 
 # Path for the YARA Generator log file
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'logs')

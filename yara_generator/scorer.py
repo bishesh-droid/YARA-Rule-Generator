@@ -22,10 +22,10 @@ def _get_string_frequencies(directory: str, min_len: int, max_len: int) -> dict[
                 all_strings[s] += 1
     return dict(all_strings)
 
-def score_strings(badware_dir: str, goodware_dir: str, min_len: int = MIN_STRING_LENGTH, max_len: int = MAX_STRING_LENGTH) -> list[str]:
+def score_strings(badware_dir: str, goodware_dir: str, min_len: int = MIN_STRING_LENGTH, max_len: int = MAX_STRING_LENGTH) -> list[tuple[str, float]]:
     """
     Scores strings based on their presence in badware vs. goodware directories.
-    Returns a list of top-scoring unique strings suitable for YARA rules.
+    Returns a sorted list of strings and their scores.
 
     Args:
         badware_dir (str): Path to the directory containing malware samples.
@@ -34,39 +34,28 @@ def score_strings(badware_dir: str, goodware_dir: str, min_len: int = MIN_STRING
         max_len (int): Maximum length of strings to consider.
 
     Returns:
-        list: A list of top-scoring unique strings.
+        list[tuple[str, float]]: A list of (string, score) tuples, sorted by score in descending order.
     """
     yr_logger.info(f"[*] Scoring strings from badware: {badware_dir} and goodware: {goodware_dir}")
 
     badware_strings_freq = _get_string_frequencies(badware_dir, min_len, max_len)
-    goodware_strings_freq = _get_string_frequencies(goodware_dir, min_len, max_len)
+    goodware_strings_freq = _get_string_frequencies(goodware_dir, min_len, max_len) if goodware_dir else {}
 
     scored_strings = {}
     for s, badware_count in badware_strings_freq.items():
         goodware_count = goodware_strings_freq.get(s, 0)
         
-        # Simple scoring: higher if more in badware, lower if more in goodware
-        # Prioritize strings unique to badware
-        if goodware_count == 0 and badware_count > 0:
-            score = badware_count * 1000 # High score for unique badware strings
-        elif badware_count > 0:
-            score = badware_count / (goodware_count + 1) # +1 to avoid division by zero
+        # Scoring algorithm: prioritize strings unique to badware
+        if goodware_count > 0:
+            score = 0  # Penalize heavily if in goodware
         else:
-            score = 0
+            score = badware_count * 100  # High score for unique badware strings
         
-        scored_strings[s] = score
+        if score > 0:
+            scored_strings[s] = score
 
     # Sort strings by score in descending order
     sorted_strings = sorted(scored_strings.items(), key=lambda item: item[1], reverse=True)
 
-    # Filter out strings that also appear frequently in goodware (even if not unique)
-    # This is a heuristic and can be refined.
-    final_strings = []
-    for s, score in sorted_strings:
-        if goodware_strings_freq.get(s, 0) < badware_strings_freq.get(s, 0) and score > 0: # Heuristic: less frequent in goodware
-            final_strings.append(s)
-        if len(final_strings) >= TOP_STRINGS_COUNT:
-            break
-
-    yr_logger.info(f"[+] Identified {len(final_strings)} top-scoring strings.")
-    return final_strings
+    yr_logger.info(f"[+] Scored {len(sorted_strings)} candidate strings.")
+    return sorted_strings

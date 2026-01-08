@@ -42,14 +42,18 @@ def generate(badware_dir, goodware_dir, rule_name, output_file, min_len, max_len
 
     try:
         # 1. Score strings
-        top_strings = score_strings(badware_dir, goodware_dir, min_len, max_len)[:top_count]
+        scored_strings = score_strings(badware_dir, goodware_dir, min_len, max_len)
 
-        if not top_strings:
+        if not scored_strings:
             click.echo("No significant strings found to generate a meaningful YARA rule. Exiting.")
             yr_logger.warning("[*] No significant strings found. YARA rule generation aborted.")
             sys.exit(0)
 
-        # 2. Generate YARA rule
+        # 2. Select top strings
+        top_strings = [s for s, score in scored_strings[:top_count]]
+        yr_logger.info(f"[*] Selected top {len(top_strings)} strings for rule generation.")
+
+        # 3. Generate YARA rule
         generated_rule = generate_yara_rule(rule_name, top_strings, condition, output_file)
         click.echo(f"[+] YARA rule '{rule_name}' generated and saved to {output_file}")
 

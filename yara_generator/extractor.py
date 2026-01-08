@@ -29,18 +29,18 @@ def extract_strings(file_path: str, min_len: int = MIN_STRING_LENGTH, max_len: i
         # Regex to find sequences of printable ASCII characters
         ascii_strings = re.findall(rb'[\x20-\x7E]{%d,%d}' % (min_len, max_len), content)
         for s in ascii_strings:
-            extracted.add(s.decode('ascii').strip())
+            extracted.add(s.decode('ascii', errors='ignore').strip())
 
-        # Unicode strings (UTF-16 Little Endian, common in Windows executables)
-        # Look for sequences of printable ASCII characters followed by null bytes
-        unicode_strings = re.findall(rb'(?:[\x20-\x7E]\x00){%d,%d}' % (min_len, max_len), content)
+        # Unicode strings (UTF-16 Little Endian)
+        # More reliable method to find UTF-16LE strings
+        unicode_strings = re.findall(rb'(?:[\x20-\x7E]\x00){%d,}' % min_len, content)
         for s in unicode_strings:
             try:
-                # Decode as UTF-16-LE and remove null bytes
-                decoded_s = s.decode('utf-16-le').replace('\x00', '').strip()
-                if len(decoded_s) >= min_len and len(decoded_s) <= max_len:
+                decoded_s = s.decode('utf-16-le').strip()
+                if len(decoded_s) <= max_len:
                     extracted.add(decoded_s)
             except UnicodeDecodeError:
+                yr_logger.debug(f"Unicode decode error for string in {file_path}")
                 pass # Ignore if not valid unicode
 
     except Exception as e:

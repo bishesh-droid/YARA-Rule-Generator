@@ -43,20 +43,21 @@ def generate_yara_rule(rule_name: str, strings: List[str], condition_type: str =
         rule_content.append("        false")
     else:
         string_identifiers = [f"$s{i}" for i in range(len(strings))]
-        if condition_type.lower() == "all of them":
-            rule_content.append(f"        all of ({ ', '.join(string_identifiers) })")
-        elif condition_type.lower() == "any of them":
-            rule_content.append(f"        any of ({ ', '.join(string_identifiers) })")
-        elif "of them" in condition_type.lower():
+        condition_str = condition_type.lower()
+
+        if condition_str == "all of them":
+            rule_content.append(f"        all of ({', '.join(string_identifiers)})")
+        elif "of them" in condition_str:
             try:
-                num = int(condition_type.lower().split(' ')[0])
-                rule_content.append(f"        {num} of ({ ', '.join(string_identifiers) })")
-            except ValueError:
-                yr_logger.warning(f"[WARN] Invalid condition type '{condition_type}'. Defaulting to 'any of them'.")
-                rule_content.append(f"        any of ({ ', '.join(string_identifiers) })")
-        else:
-            yr_logger.warning(f"[WARN] Invalid condition type '{condition_type}'. Defaulting to 'any of them'.")
-            rule_content.append(f"        any of ({ ', '.join(string_identifiers) })")
+                num = int(condition_str.split(' ')[0])
+                rule_content.append(f"        {num} of ({', '.join(string_identifiers)})")
+            except (ValueError, IndexError):
+                yr_logger.warning(f"[WARN] Invalid numeric condition '{condition_type}'. Defaulting to 'any of them'.")
+                rule_content.append(f"        any of ({', '.join(string_identifiers)})")
+        else: # Default to "any of them"
+            if condition_str != "any of them":
+                 yr_logger.warning(f"[WARN] Invalid condition type '{condition_type}'. Defaulting to 'any of them'.")
+            rule_content.append(f"        any of ({', '.join(string_identifiers)})")
 
     rule_content.append("}")
 
